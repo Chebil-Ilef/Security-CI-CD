@@ -1,0 +1,24 @@
+{
+    "title": "HTTP Overview",
+    "uid": "tp2-http-overview",
+    "schemaVersion": 39,
+    "version": 1,
+    "panels": [
+      {
+        "type": "stat",
+        "title": "Total HTTP Requests",
+        "gridPos": { "x": 0, "y": 0, "w": 8, "h": 4 },
+        "targets": [
+          { "expr": "sum(increase(http_requests_total[5m]))" }
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "Requests by Status",
+        "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+        "targets": [
+          { "expr": "sum by (status) (rate(http_requests_total[1m]))" }
+        ]
+      }
+    ]
+  }

@@ -1,0 +1,73 @@
+version: '3.9'
+services:
+  backend:
+    build: ./backend
+    command: npm run dev
+    environment:
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4318/v1/traces
+    ports:
+      - '3000:3000'
+    networks: [obs]
+
+  frontend:
+    build: ./frontend
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    ports:
+      - '5173:5173'
+    depends_on: [backend]
+    networks: [obs]
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '9090:9090'
+    networks: [obs]
+
+  loki:
+    image: grafana/loki:2.9.6
+    command: -config.file=/etc/loki/local-config.yml
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/local-config.yml:ro
+    ports:
+      - '3100:3100'
+    networks: [obs]
+
+  promtail:
+    image: grafana/promtail:2.9.6
+    volumes:
+      - ./observability/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    networks: [obs]
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    command: ["-config.file=/etc/tempo/config.yml"]
+    volumes:
+      - ./observability/tempo-config.yml:/etc/tempo/config.yml:ro
+    ports:
+      - '3200:3200'
+    networks: [obs]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otelcol/config.yml:ro
+    ports:
+      - '4318:4318'
+    networks: [obs]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - '3001:3000'
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks: [obs]
+
+networks:
+  obs:
+    driver: bridge
