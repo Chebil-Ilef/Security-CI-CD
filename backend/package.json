@@ -3,11 +3,9 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
+        "dev": "node --loader ts-node/esm src/index.ts",
         "build": "tsc -p tsconfig.build.json",
-        "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-        "start": "node dist/index.js",
-        "lint": "eslint .",
-        "test": "jest --passWithNoTests"
+        "start": "node dist/index.js"
     },
     "dependencies": {
       "express": "^4.19.2",
