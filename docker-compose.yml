@@ -4,18 +4,20 @@ services:
     build: ./backend
     command: npm run dev
     environment:
-      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4318/v1/traces
+      - OTEL_EXPORTER_OTLP_ENDPOINT=grpc://otel-collector:4317
+      - OTEL_SERVICE_NAME=backend
     ports:
       - '3000:3000'
     networks: [obs]
 
   frontend:
     build: ./frontend
-    command: npm run dev -- --host 0.0.0.0 --port 5173
     ports:
-      - '5173:5173'
-    depends_on: [backend]
-    networks: [obs]
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - obs
 
   prometheus:
     image: prom/prometheus:latest
@@ -26,39 +28,54 @@ services:
     networks: [obs]
 
   loki:
-    image: grafana/loki:2.9.6
+    image: grafana/loki:2.9.0
+    ports:
+      - "3100:3100"
     command: -config.file=/etc/loki/local-config.yml
     volumes:
-      - ./observability/loki-config.yml:/etc/loki/local-config.yml:ro
-    ports:
-      - '3100:3100'
+      - ./observability/loki-config.yml:/etc/loki/local-config.yml
+      - ./observability/loki-data:/wal
+      - ./observability/loki-storage:/loki
+      - ./observability/loki-chunks:/chunks
     networks: [obs]
 
   promtail:
     image: grafana/promtail:2.9.6
     volumes:
-      - ./observability/promtail-config.yml:/etc/promtail/config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./observability/promtail-config.yml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
     networks: [obs]
 
   tempo:
-    image: grafana/tempo:2.6.0
-    command: ["-config.file=/etc/tempo/config.yml"]
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
     volumes:
-      - ./observability/tempo-config.yml:/etc/tempo/config.yml:ro
+      - ./observability/tempo-config.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/tmp/tempo
     ports:
-      - '3200:3200'
+      - "3200:3200"   # Tempo HTTP API
+      - "9095:4317"   # Tempo OTLP gRPC (mapped to host 9095)
+      - "9096:4318"   # Tempo OTLP HTTP (mapped to host 9096)
+      - "9097:9096"   # Tempo internal gRPC (mapped to host 9097)
     networks: [obs]
+    restart: unless-stopped
 
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.104.0
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.138.0
+    container_name: otelcol
     command: ["--config=/etc/otelcol/config.yml"]
     volumes:
-      - ./observability/otel-collector.yml:/etc/otelcol/config.yml:ro
+      - ./observability/otel-config.yml:/etc/otelcol/config.yml:ro
     ports:
-      - '4318:4318'
+      - "4317:4317"   # OTel Collector OTLP gRPC
+      - "4318:4318"   # OTel Collector OTLP HTTP
+      - "9464:9464"   # Prometheus exporter
     networks: [obs]
+    depends_on:
+      - tempo
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -66,8 +83,16 @@ services:
       - '3001:3000'
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./observability/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./observability/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./observability/provisioning/dashboards/json:/etc/grafana/provisioning/dashboards/json
     networks: [obs]
+
 
 networks:
   obs:
     driver: bridge
+
+volumes:
+  tempo-data:
