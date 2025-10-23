@@ -121,7 +121,6 @@ jobs:
           done
           curl http://localhost:3000/healthz
 
-      # --- FIX: allow ZAP (uid 1000) to write into the workspace mount (/zap/wrk)
       - name: Make workspace writable for ZAP
         run: |
           # Pre-create the files ZAP's Automation Framework wants to write
@@ -137,7 +136,6 @@ jobs:
           fail_action: true
           allow_issue_writing: false
           rules_file_name: ".zap/rules.tsv"
-          # Avoid the default `zap_scan` and make it unique per run:
           artifact_name: "zap-scan-${{ github.run_id }}"
           cmd_options: "-a -j -m 5 -T 60 -I"
 

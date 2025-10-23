@@ -118,6 +118,12 @@ app.get('/metrics', async (_req, res) => {
 });
 
 
+app.post("/api/insecure", (req, res) => {
+  eval(req.body.input); // on purpose insecure
+  res.send("ok");
+});
+
+
 app.listen(PORT, () => {
   logger.info(`✅ Backend running on http://localhost:${PORT}`);
 });

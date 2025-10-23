@@ -4,10 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# 🟢 ajoute cette ligne :
 COPY tsconfig.build.json ./
 
-# déjà présent :
 COPY tsconfig.json ./
 COPY src ./src
 
