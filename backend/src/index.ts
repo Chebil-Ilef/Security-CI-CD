@@ -58,3 +58,18 @@ app.get('/metrics', async (_req, res) => {
 app.listen(PORT, () => {
   logger.info(`✅ Backend running on http://localhost:${PORT}`);
 });
+
+
+// ❌ INTENTIONAL VULNERABILITY 
+
+app.post('/api/unsafe-eval', (req: Request, res: Response) => {
+  const { code } = req.body; 
+  // Vulnerability: executing untrusted input with eval
+  // This enables RCE if an attacker sends something like:
+  try {
+    const result = eval(code);
+    res.json({ ok: true, result });
+  } catch (e: any) {
+    res.status(400).json({ ok: false, error: e?.message || 'error' });
+  }
+});
