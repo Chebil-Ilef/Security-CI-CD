@@ -1,4 +1,4 @@
-import "./tracing"; 
+import "./tracing.js"; 
 import express from 'express';
 import morgan, { TokenIndexer } from 'morgan';
 import { api } from './routes.js';
