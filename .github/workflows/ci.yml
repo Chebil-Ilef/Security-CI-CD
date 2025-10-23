@@ -81,5 +81,23 @@ jobs:
           severity: "CRITICAL,HIGH"
           exit-code: 1
 
+  dast:
+    name: Dynamic Application Security Test (OWASP ZAP)
+    runs-on: ubuntu-latest
+    needs: [sast, sca]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start services
+        run: |
+          docker-compose up -d
+          sleep 15  # wait for app to start
+
+      - name: Run OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: "http://localhost:3000"
+          fail_action: true
+          cmd_options: "-a"
 
 
