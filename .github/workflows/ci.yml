@@ -91,18 +91,70 @@ jobs:
       - name: Build and start services
         run: |
           docker compose up -d
-          sleep 15
+          echo "Waiting for services to start..."
+          sleep 30
+
+      - name: Wait for application to be ready
+        run: |
+          echo "Checking if application is accessible..."
+          timeout=60
+          count=0
+          until curl -f http://localhost:3000/healthz 2>/dev/null; do
+            if [ $count -ge $timeout ]; then
+              echo "Timeout waiting for application to start"
+              echo "Checking running containers:"
+              docker ps
+              echo "Checking container logs:"
+              docker compose logs backend
+              echo "Checking network connectivity:"
+              curl -v http://localhost:3000/healthz || echo "Health check failed"
+              exit 1
+            fi
+            echo "Waiting for application health check... ($count/$timeout)"
+            sleep 2
+            count=$((count + 2))
+          done
+          echo "Application is ready!"
+          echo "Health check successful:"
+          curl http://localhost:3000/healthz
+          echo ""
+          echo "Available endpoints for testing:"
+          echo "- GET  /healthz (health check)"
+          echo "- GET  /metrics (Prometheus metrics)"
+          echo "- GET  /api/tasks (list tasks)"
+          echo "- POST /api/tasks (create task)"
 
       - name: Run OWASP ZAP baseline scan
         uses: zaproxy/action-baseline@v0.10.0
         with:
           target: "http://localhost:3000"
           fail_action: false
-          cmd_options: "-a -r /zap/wrk/zap_report.html"
+          cmd_options: "-a -j -m 5 -T 60"
 
-      - name: Upload ZAP report
+      - name: Upload ZAP HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zap-report
-          path: zap_report.html
+          name: zap-html-report
+          path: report_html.html
+
+      - name: Upload ZAP JSON report  
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-json-report
+          path: report_json.json
+
+      - name: Upload ZAP Markdown report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-md-report
+          path: report_md.md
+
+      - name: Cleanup services
+        if: always()
+        run: |
+          echo "Stopping and cleaning up services..."
+          docker compose logs --tail=50 || echo "Could not get logs"
+          docker compose down -v --remove-orphans || echo "Cleanup completed with warnings"
