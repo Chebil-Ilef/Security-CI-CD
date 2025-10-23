@@ -2,12 +2,43 @@ import "./tracing.ts";
 import express from 'express';
 import morgan, { TokenIndexer } from 'morgan';
 import { api } from './routes.js';
+import helmet from 'helmet';
 import cors from 'cors';
 import pino from 'pino';
 import client from 'prom-client';
 import { Request, Response } from 'express';
 
 const app = express();
+// --- Security Middleware ---
+app.disable('x-powered-by'); // removes the header leak
+
+// Apply Helmet to set secure HTTP headers
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"], // adjust if using inline scripts
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    crossOriginEmbedderPolicy: true,
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginResourcePolicy: { policy: "same-origin" },
+    frameguard: { action: "deny" },
+    hsts: { maxAge: 31536000, includeSubDomains: true },
+    referrerPolicy: { policy: "no-referrer" },
+  })
+);
+
+// Add Permissions Policy header manually
+app.use((_req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
+
 const PORT = process.env.PORT || 3000;
 const logger = pino();
 const collectDefaultMetrics = client.collectDefaultMetrics;
@@ -20,7 +51,7 @@ const httpRequestCounter = new client.Counter({
 });
 
 
-app.use(cors());
+app.use(cors({ origin: ['http://localhost:5173'] })); 
 app.use(express.json());
 app.use('/api', api);
 // Middleware to count each request
