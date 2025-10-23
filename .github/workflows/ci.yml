@@ -90,7 +90,7 @@ jobs:
 
       - name: Build and start services
         run: |
-          docker-compose up -d
+          docker compose up -d
           sleep 15  # wait for app to start
 
       - name: Run OWASP ZAP baseline scan
