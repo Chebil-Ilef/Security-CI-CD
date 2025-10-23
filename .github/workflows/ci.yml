@@ -94,7 +94,6 @@ jobs:
           docker compose up -d
           echo "Waiting for services to start..."
           sleep 30
-          echo "Checking container status after startup:"
           docker compose ps
 
       - name: Wait for application to be ready
@@ -102,64 +101,47 @@ jobs:
           echo "Checking backend container status..."
           if ! docker compose ps backend | grep -q "Up"; then
             echo "Backend container is not running!"
-            echo "Container status:"
             docker compose ps backend
-            echo "Backend logs:"
             docker compose logs backend
             exit 1
           fi
-          
-          echo "Backend container is running, checking if application is accessible..."
           timeout=60
           count=0
           until curl -f http://localhost:3000/healthz 2>/dev/null; do
             if [ $count -ge $timeout ]; then
               echo "Timeout waiting for application to start"
-              echo "Checking running containers:"
               docker ps
-              echo "Checking container logs:"
               docker compose logs backend
-              echo "Checking network connectivity:"
-              curl -v http://localhost:3000/healthz || echo "Health check failed"
+              curl -v http://localhost:3000/healthz || true
               exit 1
             fi
             echo "Waiting for application health check... ($count/$timeout)"
             sleep 2
             count=$((count + 2))
           done
-          echo "Application is ready!"
-          echo "Health check successful:"
           curl http://localhost:3000/healthz
-          echo ""
-          echo "Available endpoints for testing:"
-          echo "- GET  /healthz (health check)"
-          echo "- GET  /metrics (Prometheus metrics)"
-          echo "- GET  /api/tasks (list tasks)"
-          echo "- POST /api/tasks (create task)"
 
-      - name: Test API endpoints
+      # --- FIX: allow ZAP (uid 1000) to write into the workspace mount (/zap/wrk)
+      - name: Make workspace writable for ZAP
         run: |
-          echo "Testing root endpoint..."
-          curl -f http://localhost:3000/ || echo "Root endpoint failed"
-          
-          echo "Testing robots.txt..."
-          curl -f http://localhost:3000/robots.txt || echo "Robots.txt failed"
-          
-          echo "Testing sitemap.xml..."
-          curl -f http://localhost:3000/sitemap.xml || echo "Sitemap.xml failed"
-          
-          echo "Testing /api/tasks endpoint..."
-          curl -f http://localhost:3000/api/tasks || echo "Tasks endpoint failed"
-          
-          echo "All endpoint tests completed!"
+          sudo chown -R 1000:1000 "$GITHUB_WORKSPACE" || true
+          chmod -R a+rwX "$GITHUB_WORKSPACE" || true
+          # Pre-create the files ZAP's Automation Framework wants to copy/write
+          : > report_json.json
+          : > report_md.md
+          : > report_html.html
+          : > zap.yaml
+          chmod a+rw report_json.json report_md.md report_html.html zap.yaml
 
       - name: Run OWASP ZAP baseline scan
-        uses: zaproxy/action-baseline@v0.10.0
+        uses: zaproxy/action-baseline@v0.14.0
         with:
           target: "http://localhost:3000"
           fail_action: true
           allow_issue_writing: false
           rules_file_name: ".zap/rules.tsv"
+          # Avoid the default `zap_scan` and make it unique per run:
+          artifact_name: "zap-scan-${{ github.run_id }}"
           cmd_options: "-a -j -m 5 -T 60 -I"
 
       - name: Upload ZAP HTML report
@@ -169,7 +151,7 @@ jobs:
           name: zap-html-report
           path: report_html.html
 
-      - name: Upload ZAP JSON report  
+      - name: Upload ZAP JSON report
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -186,6 +168,5 @@ jobs:
       - name: Cleanup services
         if: always()
         run: |
-          echo "Stopping and cleaning up services..."
-          docker compose logs --tail=50 || echo "Could not get logs"
-          docker compose down -v --remove-orphans || echo "Cleanup completed with warnings"
+          docker compose logs --tail=50 || true
+          docker compose down -v --remove-orphans || true
