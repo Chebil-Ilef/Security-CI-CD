@@ -12,24 +12,6 @@ import { Request, Response } from 'express';
 
 const app = express();
 
-// Route that intentionally skips Helmet (mounted before Helmet)
-app.get('/insecure', (req, res) => {
-  // weak cookie: no HttpOnly, no Secure, no SameSite
-  res.cookie('session', 'demo123', {
-    httpOnly: false,
-    secure: false,
-    // sameSite omitted intentionally
-  });
-
-  // Return simple HTML so ZAP can passively analyze headers
-  res
-    .status(200)
-    .type('html')
-    .send(`<html><body><h1>Insecure Endpoint</h1><p>For ZAP scan only.</p></body></html>`);
-});
-
-
-
 // --- Security Middleware ---
 app.disable('x-powered-by'); // removes the header leak
 
