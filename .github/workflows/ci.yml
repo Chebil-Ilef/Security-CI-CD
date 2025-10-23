@@ -90,13 +90,26 @@ jobs:
 
       - name: Build and start services
         run: |
+          echo "Starting services with Docker Compose..."
           docker compose up -d
           echo "Waiting for services to start..."
           sleep 30
+          echo "Checking container status after startup:"
+          docker compose ps
 
       - name: Wait for application to be ready
         run: |
-          echo "Checking if application is accessible..."
+          echo "Checking backend container status..."
+          if ! docker compose ps backend | grep -q "Up"; then
+            echo "Backend container is not running!"
+            echo "Container status:"
+            docker compose ps backend
+            echo "Backend logs:"
+            docker compose logs backend
+            exit 1
+          fi
+          
+          echo "Backend container is running, checking if application is accessible..."
           timeout=60
           count=0
           until curl -f http://localhost:3000/healthz 2>/dev/null; do

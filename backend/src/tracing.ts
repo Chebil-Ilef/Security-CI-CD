@@ -1,12 +1,13 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 
 
-const traceExporter = new OTLPTraceExporter({
-    url: 'http://otel-collector:4317',
+try {
+  const traceExporter = new OTLPTraceExporter({
+    url: 'http://otelcol:4318',
   });
   
   const sdk = new NodeSDK({
@@ -19,4 +20,8 @@ const traceExporter = new OTLPTraceExporter({
   });
   
   sdk.start();
-console.log("✅ OpenTelemetry initialized");
+  console.log("✅ OpenTelemetry initialized");
+} catch (error) {
+  console.warn("⚠️ OpenTelemetry initialization failed:", error);
+  console.warn("Continuing without tracing...");
+}
