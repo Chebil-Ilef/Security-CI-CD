@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
-        "dev": "node --import=ts-node/esm src/index.ts",
+        "dev": "node --loader ts-node/esm src/index.ts",
         "build": "tsc -p tsconfig.build.json",
         "start": "node dist/index.js"
     },
@@ -29,6 +29,7 @@
         "jest": "^29.7.0",
         "supertest": "^7.0.0",
         "ts-jest": "^29.2.5",
+        "ts-node": "^10.9.2",
         "ts-node-dev": "^2.0.0",
         "typescript": "^5.6.2"
     }

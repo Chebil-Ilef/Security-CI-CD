@@ -1,9 +1,9 @@
 services:
   backend:
     build: ./backend
-    command: npm run dev
+    command: npm start
     environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=grpc://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4318
       - OTEL_SERVICE_NAME=backend
     ports:
       - '3000:3000'
