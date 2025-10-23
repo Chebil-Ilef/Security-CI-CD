@@ -19,7 +19,13 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"], // adjust if using inline scripts
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
         objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
         upgradeInsecureRequests: [],
       },
     },
@@ -35,6 +41,10 @@ app.use(
 // Add Permissions Policy header manually
 app.use((_req, res, next) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // Add cache control headers
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   next();
 });
 
@@ -77,6 +87,28 @@ app.use(
     });
   })
 );
+
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'Task API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/healthz',
+      metrics: '/metrics',
+      tasks: '/api/tasks'
+    }
+  });
+});
+
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain');
+  res.send('User-agent: *\nDisallow: /api/\nAllow: /healthz\nAllow: /metrics');
+});
+
+app.get('/sitemap.xml', (_req, res) => {
+  res.type('application/xml');
+  res.send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+});
 
 app.get('/healthz', (_req, res) => res.send('ok'));
 

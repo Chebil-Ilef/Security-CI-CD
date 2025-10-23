@@ -137,12 +137,30 @@ jobs:
           echo "- GET  /api/tasks (list tasks)"
           echo "- POST /api/tasks (create task)"
 
+      - name: Test API endpoints
+        run: |
+          echo "Testing root endpoint..."
+          curl -f http://localhost:3000/ || echo "Root endpoint failed"
+          
+          echo "Testing robots.txt..."
+          curl -f http://localhost:3000/robots.txt || echo "Robots.txt failed"
+          
+          echo "Testing sitemap.xml..."
+          curl -f http://localhost:3000/sitemap.xml || echo "Sitemap.xml failed"
+          
+          echo "Testing /api/tasks endpoint..."
+          curl -f http://localhost:3000/api/tasks || echo "Tasks endpoint failed"
+          
+          echo "All endpoint tests completed!"
+
       - name: Run OWASP ZAP baseline scan
         uses: zaproxy/action-baseline@v0.10.0
         with:
           target: "http://localhost:3000"
-          fail_action: false
-          cmd_options: "-a -j -m 5 -T 60"
+          fail_action: true
+          allow_issue_writing: false
+          rules_file_name: ".zap/rules.tsv"
+          cmd_options: "-a -j -m 5 -T 60 -I"
 
       - name: Upload ZAP HTML report
         if: always()
