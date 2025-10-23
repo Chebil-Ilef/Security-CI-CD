@@ -124,14 +124,11 @@ jobs:
       # --- FIX: allow ZAP (uid 1000) to write into the workspace mount (/zap/wrk)
       - name: Make workspace writable for ZAP
         run: |
-          sudo chown -R 1000:1000 "$GITHUB_WORKSPACE" || true
-          chmod -R a+rwX "$GITHUB_WORKSPACE" || true
-          # Pre-create the files ZAP's Automation Framework wants to copy/write
-          : > report_json.json
-          : > report_md.md
-          : > report_html.html
-          : > zap.yaml
-          chmod a+rw report_json.json report_md.md report_html.html zap.yaml
+          # Pre-create the files ZAP's Automation Framework wants to write
+          touch report_json.json report_md.md report_html.html zap.yaml
+          chmod 666 report_json.json report_md.md report_html.html zap.yaml
+          # Make workspace directory writable for ZAP container (uid 1000)
+          sudo chmod -R a+rwX . 2>/dev/null || true
 
       - name: Run OWASP ZAP baseline scan
         uses: zaproxy/action-baseline@v0.14.0
