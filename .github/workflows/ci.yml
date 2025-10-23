@@ -54,3 +54,16 @@ jobs:
         with:
           name: grafana-dashboards
           path: observability/provisioning/dashboards/json
+
+  sast:
+    name: Static Code Analysis (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep scan
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: "p/ci"
+          auditOn: "error"
+
